@@ -1,4 +1,4 @@
-package net.mll.nbtcrashfix.client.mixin;
+package net.mll.nbtcrashfix.mixin;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.Connection;
+import net.mll.nbtcrashfix.util.DiscardRateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,17 +34,6 @@ public class ConnectionExceptionMixin {
 
 	@Unique
 	private final DiscardRateLimiter rateLimiter = new DiscardRateLimiter();
-
-	@Unique
-	private static final class DiscardRateLimiter {
-		private int totalDiscardCount = 0;
-		private boolean rateLimited = false;
-		private long lastDiscardTime = 0L;
-		private long windowStart = 0L;
-		private int discardCount = 0;
-		private long lastLogTime = 0L;
-		private long suppressedSinceLastLog = 0L;
-	}
 
 	@Unique
 	private static void log(String msg, Object... args) {
