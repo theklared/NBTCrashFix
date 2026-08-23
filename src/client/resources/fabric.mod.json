@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "nbtcrashfix",
+  "version": "1.0.0",
+  "name": "NBTCrashFix",
+  "description": "",
+  "authors": ["theklared"],
+  "contact": {},
+  "license": "Apache-2.0",
+  "environment": "client",
+  "mixins": [
+    {
+      "config": "nbtcrashfix.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": "*",
+    "minecraft": "1.21.11"
+  }
+}
