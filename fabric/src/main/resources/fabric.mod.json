@@ -3,7 +3,7 @@
   "id": "nbtcrashfix",
   "version": "${version}",
   "name": "NBTCrashFix",
-  "description": "",
+  "description": "${description}",
   "authors": ["theklared"],
   "contact": {
     "source": "https://github.com/theklared/NBTCrashFix",
