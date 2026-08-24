@@ -21,68 +21,68 @@ import java.lang.reflect.Field;
 @Mixin(Connection.class)
 public class ConnectionExceptionMixin {
 	@Unique
-	private static final Logger LOGGER = LoggerFactory.getLogger("nbtcrashfix");
+	private static final Logger NCF$LOGGER = LoggerFactory.getLogger("nbtcrashfix");
 
 	@Unique
-	private static final int RATELIMIT_THRESHOLD = 15; // 15/s
+	private static final int NCF$RATELIMIT_THRESHOLD = 15; // 15/s
 	@Unique
-	private static final long RATELIMIT_RESET_MILLIS = 10_000L;
+	private static final long NCF$RATELIMIT_RESET_MILLIS = 10_000L;
 	@Unique
-	private static final long WINDOW_MILLIS = 1000L;
+	private static final long NCF$WINDOW_MILLIS = 1000L;
 	@Unique
-	private static final long LOG_INTERVAL_MILLIS = 5000L;
+	private static final long NCF$LOG_INTERVAL_MILLIS = 5000L;
 
 	@Unique
-	private final DiscardRateLimiter rateLimiter = new DiscardRateLimiter();
+	private final DiscardRateLimiter NCF$rateLimiter = new DiscardRateLimiter();
 
 	@Unique
-	private static void log(String msg, Object... args) {
-		LOGGER.warn("[nbtcrashfix] " + msg, args);
+	private static void NCF$log(String msg, Object... args) {
+		NCF$LOGGER.warn("[nbtcrashfix] " + msg, args);
 	}
 
 	@Inject(method = "exceptionCaught", at = @At("HEAD"), cancellable = true)
-	private void suppressDecodeCrash(ChannelHandlerContext ctx, Throwable cause, CallbackInfo ci) {
-		if (!isSuppressibleDecodeFailure(cause))
+	private void NCF$suppressDecodeCrash(ChannelHandlerContext ctx, Throwable cause, CallbackInfo ci) {
+		if (!NCF$isSuppressibleDecodeFailure(cause))
 			return;
 
 		long now = System.currentTimeMillis();
-		rateLimiter.totalDiscardCount++;
+		NCF$rateLimiter.totalDiscardCount++;
 
 		// check if should disable ratelimit
-		if (rateLimiter.rateLimited && now - rateLimiter.lastDiscardTime > RATELIMIT_RESET_MILLIS)
-			rateLimiter.rateLimited = false;
-		rateLimiter.lastDiscardTime = now;
+		if (NCF$rateLimiter.rateLimited && now - NCF$rateLimiter.lastDiscardTime > NCF$RATELIMIT_RESET_MILLIS)
+			NCF$rateLimiter.rateLimited = false;
+		NCF$rateLimiter.lastDiscardTime = now;
 
 		// check if should enable ratelimit
-		if (now - rateLimiter.windowStart > WINDOW_MILLIS) {
-			rateLimiter.windowStart = now;
-			rateLimiter.discardCount = 0;
+		if (now - NCF$rateLimiter.windowStart > NCF$WINDOW_MILLIS) {
+			NCF$rateLimiter.windowStart = now;
+			NCF$rateLimiter.discardCount = 0;
 		}
-		rateLimiter.discardCount++;
+		NCF$rateLimiter.discardCount++;
 
-		if (!rateLimiter.rateLimited && rateLimiter.discardCount > RATELIMIT_THRESHOLD) {
-			rateLimiter.rateLimited = true;
-			rateLimiter.lastLogTime = now;
-			log("Discard rate limit exceeded ({} in {}ms): {}", rateLimiter.discardCount, WINDOW_MILLIS, cause.getMessage());
+		if (!NCF$rateLimiter.rateLimited && NCF$rateLimiter.discardCount > NCF$RATELIMIT_THRESHOLD) {
+			NCF$rateLimiter.rateLimited = true;
+			NCF$rateLimiter.lastLogTime = now;
+			NCF$log("Discard rate limit exceeded ({} in {}ms): {}", NCF$rateLimiter.discardCount, NCF$WINDOW_MILLIS, cause.getMessage());
 		}
 
 		// log malformed packet
-		if (!rateLimiter.rateLimited)
-			log("(#{}) Discarded malformed packet: {}", rateLimiter.totalDiscardCount, cause.getMessage());
+		if (!NCF$rateLimiter.rateLimited)
+			NCF$log("(#{}) Discarded malformed packet: {}", NCF$rateLimiter.totalDiscardCount, cause.getMessage());
 		else {
-			rateLimiter.suppressedSinceLastLog++;
-			if (now - rateLimiter.lastLogTime > LOG_INTERVAL_MILLIS) {
-				log("(#{}) Discarded {} malformed packet(s) in ~{}ms: {}",
-						rateLimiter.totalDiscardCount,
-						rateLimiter.suppressedSinceLastLog,
-						LOG_INTERVAL_MILLIS,
+			NCF$rateLimiter.suppressedSinceLastLog++;
+			if (now - NCF$rateLimiter.lastLogTime > NCF$LOG_INTERVAL_MILLIS) {
+				NCF$log("(#{}) Discarded {} malformed packet(s) in ~{}ms: {}",
+						NCF$rateLimiter.totalDiscardCount,
+						NCF$rateLimiter.suppressedSinceLastLog,
+						NCF$LOG_INTERVAL_MILLIS,
 						cause.getMessage());
-				rateLimiter.lastLogTime = now;
-				rateLimiter.suppressedSinceLastLog = 0;
+				NCF$rateLimiter.lastLogTime = now;
+				NCF$rateLimiter.suppressedSinceLastLog = 0;
 			}
 		}
 
-		resetDecoderCumulation(ctx);
+		NCF$resetDecoderCumulation(ctx);
 		ci.cancel();
 	}
 
@@ -92,7 +92,7 @@ public class ConnectionExceptionMixin {
 	 * reader position corrupted by the packet we just discarded, avoiding desync.
 	 */
 	@Unique
-	private static void resetDecoderCumulation(ChannelHandlerContext ctx) {
+	private static void NCF$resetDecoderCumulation(ChannelHandlerContext ctx) {
 		ChannelHandler handler = ctx.pipeline().get("decoder");
 		if (!(handler instanceof ByteToMessageDecoder decoder))
 			return;
@@ -107,7 +107,7 @@ public class ConnectionExceptionMixin {
 				// It's easier to accept the loss rather than tracking exactly which is malformed.
 				// Client will be corrected next server update anyway :shrug:
 				if (bb.isReadable())
-					log("Discarding {} unread bytes along with malformed packet", bb.readableBytes());
+					NCF$log("Discarding {} unread bytes along with malformed packet", bb.readableBytes());
 				bb.release();
 			}
 
@@ -116,12 +116,12 @@ public class ConnectionExceptionMixin {
 			firstField.setAccessible(true);
 			firstField.setBoolean(decoder, true);
 		} catch (Exception e) {
-            LOGGER.error("[nbtcrashfix] Failed to reset decoder cumulation: {}", String.valueOf(e));
+			NCF$LOGGER.error("[nbtcrashfix] Failed to reset decoder cumulation: {}", String.valueOf(e));
 		}
 	}
 
 	@Unique
-	private static boolean isSuppressibleDecodeFailure(Throwable t) {
+	private static boolean NCF$isSuppressibleDecodeFailure(Throwable t) {
 		for (Throwable cur = t; cur != null; cur = cur.getCause()) {
 			// this is kinda shit
 			boolean isDecodeIssue = cur instanceof DecoderException
