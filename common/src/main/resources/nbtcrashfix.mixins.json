@@ -10,6 +10,8 @@
     "requireAnnotations": true
   },
   "mixins": [
-    "ConnectionExceptionMixin"
+    "ConnectionExceptionMixin",
+    "ItemFrameColorMixin",
+    "ItemFrameGlowMixin"
   ]
 }
